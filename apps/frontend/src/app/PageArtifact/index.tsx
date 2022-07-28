@@ -73,7 +73,7 @@ export default function PageArtifact() {
     const { sortType = artifactSortKeys[0], ascending = false, filterOption } = deferredArtifactDisplayState
     let allArtifacts = database.arts.values
     //in probability mode, filter out the artifacts that already reach criteria
-    if (showProbability) allArtifacts = allArtifacts.filter(art => art.probability && art.probability !== 1)
+    if (showProbability) allArtifacts = allArtifacts.filter(art => art.probability /*&& art.probability !== 1*/)
     const artifactIds = allArtifacts
       .filter(filterFunction(filterOption, filterConfigs))
       .sort(sortFunction(artifactSortMap[sortType] ?? [], ascending, sortConfigs))

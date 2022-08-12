@@ -6,6 +6,7 @@ import { clampPercent, objectKeyMap } from '../../Util/Util';
 import ArtifactMainStatsData from './artifact_main_gen.json';
 import ArtifactSubstatsData from './artifact_sub_gen.json';
 import ArtifactSubstatLookupTable from './artifact_sub_rolls_gen.json';
+import { calculatePFillerRolls } from '../../PageArtifact/RollProbability';
 
 const maxStar: Rarity = 5
 
@@ -104,18 +105,20 @@ export default class Artifact {
 
   //ARTIFACT IN GENERAL
   static getArtifactEfficiency(artifact: ICachedArtifact, filter: Set<SubstatKey>): { currentEfficiency: number, maxEfficiency: number } {
-    const { substats, rarity, level } = artifact
+    const { mainStatKey, substats, rarity, level } = artifact
     // Relative to max star, so comparison between different * makes sense.
     const currentEfficiency = substats.filter(({ key }) => key && filter.has(key)).reduce((sum, { efficiency }) => sum + (efficiency ?? 0), 0)
 
     const rollsRemaining = Artifact.rollsRemaining(level, rarity);
     const emptySlotCount = substats.filter(s => !s.key).length
     const matchedSlotCount = substats.filter(s => s.key && filter.has(s.key)).length
-    const unusedFilterCount = filter.size - matchedSlotCount - (filter.has(artifact.mainStatKey as any) ? 1 : 0)
-    let maxEfficiency
-    if (emptySlotCount && unusedFilterCount) maxEfficiency = currentEfficiency + Artifact.maxSubstatRollEfficiency[rarity] * rollsRemaining // Rolls into good empty slot
-    else if (matchedSlotCount) maxEfficiency = currentEfficiency + Artifact.maxSubstatRollEfficiency[rarity] * (rollsRemaining - emptySlotCount) // Rolls into existing matched slot
-    else maxEfficiency = currentEfficiency // No possible roll
+    const unusedFilterCount = filter.size - matchedSlotCount - (filter.has(mainStatKey as any) ? 1 : 0)
+    const unusedFilterStats = [...filter].filter(filterStat => !substats.some(s => s.key && s.key === filterStat) && filterStat !== mainStatKey)
+    let eFillers = unusedFilterStats.map(filler => calculatePFillerRolls(mainStatKey, substats, new Set([filler]))).reduce((p, sum) => p + sum, 0)
+    const goodFillerRollsCount = Math.min(rollsRemaining, emptySlotCount, unusedFilterCount)
+    let eGoodExtraRoll = (matchedSlotCount + goodFillerRollsCount * eFillers) / 4
+    let maxEfficiency = currentEfficiency +
+      0.85 * Artifact.maxSubstatRollEfficiency[rarity] * ((goodFillerRollsCount * eFillers) + (rollsRemaining - goodFillerRollsCount) * eGoodExtraRoll)
 
     return { currentEfficiency, maxEfficiency }
   }

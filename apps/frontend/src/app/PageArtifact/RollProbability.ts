@@ -276,4 +276,4 @@ function calculatePFillerRolls(mainStat: MainStatKey, substats: ISubstat[], requ
   return pFillerRolls / total
 }
 
-export { probability }
+export { probability, calculatePFillerRolls }
